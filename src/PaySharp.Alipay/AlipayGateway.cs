@@ -1,13 +1,13 @@
-﻿#if NETSTANDARD2_0
+﻿#if NETCOREAPP3_1
 using Microsoft.Extensions.Options;
 #endif
+using System.Threading.Tasks;
 using PaySharp.Alipay.Request;
 using PaySharp.Alipay.Response;
 using PaySharp.Core;
 using PaySharp.Core.Exceptions;
 using PaySharp.Core.Request;
 using PaySharp.Core.Utils;
-using System.Threading.Tasks;
 
 namespace PaySharp.Alipay
 {
@@ -34,7 +34,7 @@ namespace PaySharp.Alipay
             _merchant = merchant;
         }
 
-#if NETSTANDARD2_0
+#if NETCOREAPP3_1
 
         /// <summary>
         /// 初始化支付宝网关
@@ -55,7 +55,7 @@ namespace PaySharp.Alipay
 
         public new NotifyResponse NotifyResponse => (NotifyResponse)base.NotifyResponse;
 
-        protected override bool IsPaySuccess => NotifyResponse.TradeStatus == "TRADE_SUCCESS";
+        protected override bool IsPaySuccess => NotifyResponse.TradeStatus == "TRADE_SUCCESS" && !IsRefundSuccess;
 
         protected override bool IsRefundSuccess => NotifyResponse.RefundAmount > 0;
 
@@ -77,7 +77,7 @@ namespace PaySharp.Alipay
             GatewayData.Remove("sign");
             GatewayData.Remove("sign_type");
 
-            bool result = EncryptUtil.RSAVerifyData(GatewayData.ToUrl(false),
+            var result = EncryptUtil.RSAVerifyData(GatewayData.ToUrl(false),
                 NotifyResponse.Sign, _merchant.AlipayPublicKey, _merchant.SignType);
             if (result)
             {

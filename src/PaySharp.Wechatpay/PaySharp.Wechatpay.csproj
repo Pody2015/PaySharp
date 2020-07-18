@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="../../packaging.props" />
+  <Import Project="../../package.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net45;netcoreapp3.1</TargetFrameworks>
     <Title>PaySharp.Wechatpay</Title>
     <Description>微信支付</Description>
-    <Version>1.0.2</Version>
     <PackageTags>dotnetcore;pay;wechatpay;</PackageTags>
     <PackageReleaseNotes>
+      支持.net core3.1
     </PackageReleaseNotes>
   </PropertyGroup>
 

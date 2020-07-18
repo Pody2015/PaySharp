@@ -1,9 +1,6 @@
-﻿#if NETSTANDARD2_0
+﻿#if NETCOREAPP3_1
 using Microsoft.AspNetCore.Http;
 #endif
-using PaySharp.Core.Utils;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -14,6 +11,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using PaySharp.Core.Utils;
 
 namespace PaySharp.Core
 {
@@ -36,20 +36,11 @@ namespace PaySharp.Core
             set => _values[key] = value;
         }
 
-        public SortedDictionary<string, object>.KeyCollection Keys
-        {
-            get => _values.Keys;
-        }
+        public SortedDictionary<string, object>.KeyCollection Keys => _values.Keys;
 
-        public SortedDictionary<string, object>.ValueCollection Values
-        {
-            get => _values.Values;
-        }
+        public SortedDictionary<string, object>.ValueCollection Values => _values.Values;
 
-        public KeyValuePair<string, object> this[int index]
-        {
-            get => _values.ElementAt(index);
-        }
+        public KeyValuePair<string, object> this[int index] => _values.ElementAt(index);
 
         public int Count => _values.Count;
 
@@ -129,69 +120,57 @@ namespace PaySharp.Core
             var properties = type.GetProperties();
             var fields = type.GetFields();
 
-            Add(properties);
-            Add(fields);
+            Add(obj, properties, stringCase);
+            Add(obj, fields, stringCase);
 
             return true;
+        }
 
-            void Add(MemberInfo[] info)
+        private void Add(object obj, MemberInfo[] info, StringCase stringCase)
+        {
+            foreach (var item in info)
             {
-                foreach (var item in info)
+                var notAddattributes = item.GetCustomAttributes(typeof(IgnoreAttribute), true);
+                if (notAddattributes.Length > 0)
                 {
-                    var notAddattributes = item.GetCustomAttributes(typeof(IgnoreAttribute), true);
-                    if (notAddattributes.Length > 0)
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    string key;
-                    object value;
-                    var renameAttribute = item.GetCustomAttributes(typeof(ReNameAttribute), true);
-                    if (renameAttribute.Length > 0)
+                string key;
+                var renameAttribute = item.GetCustomAttributes(typeof(ReNameAttribute), true);
+                if (renameAttribute.Length > 0)
+                {
+                    key = ((ReNameAttribute)renameAttribute[0]).Name;
+                }
+                else
+                {
+                    key = stringCase switch
                     {
-                        key = ((ReNameAttribute)renameAttribute[0]).Name;
-                    }
-                    else
-                    {
-                        if (stringCase is StringCase.Camel)
-                        {
-                            key = item.Name.ToCamelCase();
-                        }
-                        else if (stringCase is StringCase.Snake)
-                        {
-                            key = item.Name.ToSnakeCase();
-                        }
-                        else
-                        {
-                            key = item.Name;
-                        }
-                    }
+                        StringCase.Snake => item.Name.ToSnakeCase(),
+                        StringCase.Camel => item.Name.ToCamelCase(),
+                        StringCase.Lower => item.Name.ToLower(),
+                        _ => item.Name,
+                    };
+                }
 
-                    switch (item.MemberType)
-                    {
-                        case MemberTypes.Field:
-                            value = ((FieldInfo)item).GetValue(obj);
-                            break;
-                        case MemberTypes.Property:
-                            value = ((PropertyInfo)item).GetValue(obj);
-                            break;
-                        default:
-                            throw new NotImplementedException();
-                    }
+                var value = item.MemberType switch
+                {
+                    MemberTypes.Field => ((FieldInfo)item).GetValue(obj),
+                    MemberTypes.Property => ((PropertyInfo)item).GetValue(obj),
+                    _ => throw new NotImplementedException(),
+                };
+                if (value is null || string.IsNullOrEmpty(value.ToString()))
+                {
+                    continue;
+                }
 
-                    if (value is null || string.IsNullOrEmpty(value.ToString()))
-                    {
-                        continue;
-                    }
-
-                    if (Exists(key))
-                    {
-                        _values[key] = value;
-                    }
-                    else
-                    {
-                        _values.Add(key, value);
-                    }
+                if (Exists(key))
+                {
+                    _values[key] = value;
+                }
+                else
+                {
+                    _values.Add(key, value);
                 }
             }
         }
@@ -203,7 +182,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public object GetValue(string key)
         {
-            _values.TryGetValue(key, out object value);
+            _values.TryGetValue(key, out var value);
             return value;
         }
 
@@ -224,7 +203,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public double GetDoubleValue(string key)
         {
-            double.TryParse(GetStringValue(key), out double value);
+            double.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -235,7 +214,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public int GetIntValue(string key)
         {
-            int.TryParse(GetStringValue(key), out int value);
+            int.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -246,7 +225,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public DateTime GetDateTimeValue(string key)
         {
-            DateTime.TryParse(GetStringValue(key), out DateTime value);
+            DateTime.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -257,7 +236,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public float GetFloatValue(string key)
         {
-            float.TryParse(GetStringValue(key), out float value);
+            float.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -268,7 +247,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public decimal GetDecimalValue(string key)
         {
-            decimal.TryParse(GetStringValue(key), out decimal value);
+            decimal.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -279,7 +258,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public byte GetByteValue(string key)
         {
-            byte.TryParse(GetStringValue(key), out byte value);
+            byte.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -290,7 +269,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public char GetCharValue(string key)
         {
-            char.TryParse(GetStringValue(key), out char value);
+            char.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -301,7 +280,7 @@ namespace PaySharp.Core
         /// <returns>参数值</returns>
         public bool GetBoolValue(string key)
         {
-            bool.TryParse(GetStringValue(key), out bool value);
+            bool.TryParse(GetStringValue(key), out var value);
             return value;
         }
 
@@ -399,7 +378,7 @@ namespace PaySharp.Core
                 Clear();
                 if (!string.IsNullOrEmpty(url))
                 {
-                    int index = url.IndexOf('?');
+                    var index = url.IndexOf('?');
 
                     if (index == 0)
                     {
@@ -411,7 +390,7 @@ namespace PaySharp.Core
 
                     foreach (Match item in mc)
                     {
-                        string value = item.Result("$3");
+                        var value = item.Result("$3");
                         Add(item.Result("$2"), isUrlDecode ? WebUtility.UrlDecode(value) : value);
                     }
                 }
@@ -422,7 +401,7 @@ namespace PaySharp.Core
             }
         }
 
-#if NETSTANDARD2_0
+#if NETCOREAPP3_1
 
         /// <summary>
         /// 将表单数据转换为网关数据
@@ -545,25 +524,37 @@ namespace PaySharp.Core
                 }
                 else
                 {
-                    if (stringCase is StringCase.Camel)
+                    key = stringCase switch
                     {
-                        key = item.Name.ToCamelCase();
-                    }
-                    else if (stringCase is StringCase.Snake)
-                    {
-                        key = item.Name.ToSnakeCase();
-                    }
-                    else
-                    {
-                        key = item.Name;
-                    }
+                        StringCase.Snake => item.Name.ToSnakeCase(),
+                        StringCase.Camel => item.Name.ToCamelCase(),
+                        StringCase.Lower => item.Name.ToLower(),
+                        _ => item.Name
+                    };
                 }
 
                 var value = GetStringValue(key);
-
-                if (value != null)
+                if (value == null)
                 {
-                    item.SetValue(obj, Convert.ChangeType(value, item.PropertyType));
+                    continue;
+                }
+
+                var propertyType = item.PropertyType;
+                if (propertyType.IsEnum)
+                {
+                    item.SetValue(obj, Enum.Parse(propertyType, value));
+                }
+                else if (propertyType.IsGenericType)
+                {
+                    propertyType = propertyType.GenericTypeArguments[0];
+                    if (propertyType.IsEnum)
+                    {
+                        item.SetValue(obj, Enum.Parse(propertyType, value));
+                    }
+                }
+                else
+                {
+                    item.SetValue(obj, Convert.ChangeType(value, propertyType));
                 }
             }
 

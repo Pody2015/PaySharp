@@ -1,6 +1,7 @@
-﻿using PaySharp.Core.Utils;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using PaySharp.Core.Utils;
 
 namespace PaySharp.Core
 {
@@ -26,9 +27,9 @@ namespace PaySharp.Core
         /// </summary>
         /// <param name="gateways">网关列表</param>
         /// <returns></returns>
-        public static BaseGateway GetGateway(IGateways gateways)
+        public static async Task<BaseGateway> GetGatewayAsync(IGateways gateways)
         {
-            var gatewayData = ReadNotifyData();
+            var gatewayData = await ReadNotifyDataAsync();
             BaseGateway gateway = null;
 
             foreach (var item in gateways.GetList())
@@ -60,7 +61,7 @@ namespace PaySharp.Core
         /// <param name="gatewayData">网关数据</param>
         public static bool ExistParameter(string[] parmaName, GatewayData gatewayData)
         {
-            int compareCount = 0;
+            var compareCount = 0;
             foreach (var item in parmaName)
             {
                 if (gatewayData.Exists(item))
@@ -69,19 +70,14 @@ namespace PaySharp.Core
                 }
             }
 
-            if (compareCount == parmaName.Length)
-            {
-                return true;
-            }
-
-            return false;
+            return compareCount == parmaName.Length;
         }
 
         /// <summary>
         /// 读取网关发回的数据
         /// </summary>
         /// <returns></returns>
-        public static GatewayData ReadNotifyData()
+        public static async Task<GatewayData> ReadNotifyDataAsync()
         {
             var gatewayData = new GatewayData();
             if (IsGetRequest)
@@ -93,14 +89,14 @@ namespace PaySharp.Core
                 if (IsXmlData)
                 {
                     var reader = new StreamReader(HttpUtil.Body);
-                    var xmlData = reader.ReadToEnd();
+                    var xmlData = await reader.ReadToEndAsync();
                     gatewayData.FromXml(xmlData);
                 }
                 else
                 {
                     try
                     {
-#if NETSTANDARD2_0
+#if NETCOREAPP3_1
                         gatewayData.FromForm(HttpUtil.Form);
 #else
                         gatewayData.FromNameValueCollection(HttpUtil.Form);

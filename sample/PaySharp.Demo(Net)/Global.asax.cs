@@ -1,14 +1,16 @@
-﻿using Autofac;
-using PaySharp.Alipay;
-using PaySharp.Core;
-using PaySharp.Core.Mvc;
-using PaySharp.Unionpay;
-using PaySharp.Wechatpay;
-using System;
+﻿using System;
 using System.Web;
 using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Routing;
+using Autofac;
+using PaySharp.Alipay;
+using PaySharp.Allinpay;
+using PaySharp.Core;
+using PaySharp.Core.Mvc;
+using PaySharp.Unionpay;
+using PaySharp.Wechatpay;
+using Serilog;
 
 namespace PaySharp.Demo_Net_
 {
@@ -16,6 +18,12 @@ namespace PaySharp.Demo_Net_
     {
         protected void Application_Start()
         {
+            Log.Logger = new LoggerConfiguration()
+                         .WriteTo.File($"{AppDomain.CurrentDomain.BaseDirectory}\\logs\\log.txt")
+                         .Enrich.WithWebApiRouteTemplate()
+                         .Enrich.WithWebApiActionName()
+                         .CreateLogger();
+
             AreaRegistration.RegisterAllAreas();
             GlobalConfiguration.Configure(a =>
             {
@@ -63,6 +71,14 @@ namespace PaySharp.Demo_Net_
                      ReturnUrl = "http://localhost:61378/Notify"
                  };
 
+                 var allinpayMerchant = new Allinpay.Merchant
+                 {
+                     AppId = "00000051",
+                     MchId = "990581007426001",
+                     Key = "allinpay888",
+                     NotifyUrl = "http://localhost:61338/Notify"
+                 };
+
                  gateways.Add(new AlipayGateway(alipayMerchant)
                  {
                      GatewayUrl = "https://openapi.alipaydev.com"
@@ -71,6 +87,10 @@ namespace PaySharp.Demo_Net_
                  gateways.Add(new UnionpayGateway(unionpayMerchant)
                  {
                      GatewayUrl = "https://gateway.test.95516.com"
+                 });
+                 gateways.Add(new AllinpayGateway(allinpayMerchant)
+                 {
+                     GatewayUrl = "https://test.allinpaygd.com"
                  });
 
                  return gateways;

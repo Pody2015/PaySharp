@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Text.Encodings.Web;
+using System.Text.Unicode;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using PaySharp.Alipay;
+using PaySharp.Allinpay;
 using PaySharp.Unionpay;
-using System.Text.Encodings.Web;
-using System.Text.Unicode;
 
 namespace PaySharp.Demo
 {
@@ -21,7 +23,7 @@ namespace PaySharp.Demo
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc();
+            services.AddControllersWithViews();
             services.AddWebEncoders(opt =>
             {
                 opt.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All);
@@ -69,6 +71,14 @@ namespace PaySharp.Demo
                     ReturnUrl = "http://localhost:61377/Notify"
                 };
 
+                var allinpayMerchant = new Allinpay.Merchant
+                {
+                    AppId = "00000051",
+                    MchId = "990581007426001",
+                    Key = "allinpay888",
+                    NotifyUrl = "http://localhost:61337/Notify"
+                };
+
                 a.Add(new AlipayGateway(alipayMerchant)
                 {
                     GatewayUrl = "https://openapi.alipaydev.com"
@@ -77,6 +87,10 @@ namespace PaySharp.Demo
                 a.Add(new UnionpayGateway(unionpayMerchant)
                 {
                     GatewayUrl = "https://gateway.test.95516.com"
+                });
+                a.Add(new AllinpayGateway(allinpayMerchant)
+                {
+                    GatewayUrl = "https://test.allinpaygd.com"
                 });
 
                 //a.UseAlipay(Configuration);
@@ -95,7 +109,7 @@ namespace PaySharp.Demo
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -107,13 +121,16 @@ namespace PaySharp.Demo
                 app.UseHsts();
             }
 
+            app.UseHttpsRedirection();
             app.UseStaticFiles();
 
-            app.UseMvc(routes =>
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
             {
-                routes.MapRoute(
+                endpoints.MapControllerRoute(
                     name: "default",
-                    template: "{controller=Home}/{action=Index}");
+                    pattern: "{controller=Home}/{action=Index}");
             });
 
             app.UsePaySharp();
